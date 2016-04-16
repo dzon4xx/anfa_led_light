@@ -14,54 +14,42 @@
 
 class led
 {
-	//Inicjalizacja pwm
-	static void init_pwms();
+
 //functions
 public:
-	led(uint8_t channel, Memory *mem);
+	led(uint8_t channel);
 	
 	//Ustaw nastawe mocy
-	void set_desired_pwm(uint16_t desired_pwm);
+	void set_desired_pwm(uint8_t desired_pwm);
 
 	//Ustaw czas rozjasniania i przyciemniania
 	void set_dim_time(uint16_t desired_dim_period);
-
-private:
-
-	//Ustaw wartosc wypelnieniea na mosfecie
-	void set_pwm();
-
-
+	
+	//Inicjalizacja pwm
+	static void init_pwms();
 
 
 //variables
 public:
-
-private:
 	
 	//rejestr pwm
 	volatile uint8_t *ocr_port;
 
-	//Czy nastawa mocy jest rozna od aktualnej mocy
-	bool is_dim;
-
 	//nastawa mocy
-	uint8_t desired_pwm;
+	uint8_t desired_pwm = 0;
 
 	//moc
-	uint8_t actual_pwm;
+	uint8_t actual_pwm = 0;
 
 	//kanal
 	uint8_t channel;
 
-	//okres rozjasniania, przyciemniania w s
-	uint8_t dim_period;
 
 	//czas zmiany poziomu mocy o 1 jednostke
-	uint8_t incr_time;
+	uint32_t incr_time = 1;
 
 	//Czynnik inkrementacji. 1 dla rozjasniania, -1 dla przyciemniania
-	uint8_t	incr_power = 1;
+	int8_t	incr_power = 1;
 
 
 }; //led

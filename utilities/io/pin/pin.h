@@ -14,7 +14,6 @@
 class Pin
 {
 	public:
-	Pin(uint8_t port_letter, uint8_t pin_num);
 
 	//zwraca litere portu
 	uint8_t get_port_letter();
@@ -22,39 +21,7 @@ class Pin
 	//zwraca maske pinu. 
 	uint8_t get_pin_mask();
 
-	uint8_t get_channel_num();
-
-	volatile uint8_t* get_dir_port();
-
-	volatile uint8_t* get_in_port();
-
-	volatile uint8_t* get_out_port();
-
-	void set_input();
-
-	void set_output();
-
-	//Ustawia pin w stan wysoki
-	void high();
-
-	//Ustawia pin w stan wysoki
-	void low();
-
-	//Zwraca stan pinu
-	bool read();
-
-
-
-private:
-
-	//Rejestr wyjsciowy PORTX
-	volatile uint8_t *out_port;
-
-	//Rejestr wejœciowy PINX
-	volatile uint8_t *in_port;
-
-	//Rejestr kierunku DDRX
-	volatile uint8_t *dir_port;
+protected:
 
 	//Maska pinu
 	uint8_t pin_mask;
@@ -63,5 +30,39 @@ private:
 
 };
 
+class Out_pin : public Pin
+{
+public:
 
-#endif /* PIN_H_ */
+	Out_pin(uint8_t port_letter, uint8_t pin_num);
+	volatile uint8_t* get_out_port();
+
+	//Ustawia pin w stan wysoki
+	void high();
+
+	//Ustawia pin w stan wysoki
+	void low();
+private:
+
+	//Rejestr wyjsciowy PORTX
+	volatile uint8_t *out_port;
+
+};
+
+class In_pin : public Pin
+{
+
+	public:
+	In_pin(uint8_t port_letter, uint8_t pin_num, bool pull_up);
+
+	volatile uint8_t* get_in_port(){return in_port;}
+
+	bool read_state() {return *in_port & pin_mask;}
+
+	private:
+
+	volatile uint8_t *in_port;
+	volatile uint8_t *dir_port;
+
+};
+#endif

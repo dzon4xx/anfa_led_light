@@ -10,7 +10,7 @@
 #define  OVF_VAL 249	//wartosc rejestru OCR1 aby timer przepelnial sie co 1ms
 
 //Zmienna globalna - szybszy dostep
-volatile unsigned long miliseconds_passed = 0;
+volatile uint32_t miliseconds_passed = 0;
 
  Clock::Clock()
 {
@@ -23,12 +23,12 @@ volatile unsigned long miliseconds_passed = 0;
 
 void Clock::start()
 {
-	TCCR1B |= (1<<CS10)||(1<<CS11);
+	TCCR1B |= ((1<<CS10)|(1<<CS11));
 }
 
 void Clock::stop()
 {
-	TCCR1B &= ~(1<<CS10)||(1<<CS11);
+	TCCR1B &= ~((1<<CS10)|(1<<CS11));
 }
 
 void Clock::restart()
@@ -45,26 +45,30 @@ unsigned long Clock::get_ms()
 }
 
 
-Clock clock;
+Clock *clock;
 
-ISR (TIMER1_COMPA_vect, ISR_NOBLOCK) 
+ISR (TIMER1_COMPA_vect) 
 {
 	miliseconds_passed++;
 
 	for (uint8_t i=0; i<NUM_OF_CHANNELS; i++)
 	{
 		led *crnt_led = leds[i];
-		if(crnt_led->is_dim)
+
+		if(crnt_led->actual_pwm != crnt_led->desired_pwm)
 		{
-			if (miliseconds_passed%crnt_led->incr_time==0)
+			
+			if (crnt_led->incr_time == 0)
 			{
-				crnt_led->actual_pwm += crnt_led->incr_power;
-				crnt_led->set_pwm();
-				if (crnt_led->actual_pwm==crnt_led->desired_pwm)
-				{
-					crnt_led->is_dim = false;
-				}		
+				crnt_led->actual_pwm = crnt_led->desired_pwm;
+			}			
+			else if (miliseconds_passed%crnt_led->incr_time==0)
+			{
+					crnt_led->actual_pwm += crnt_led->incr_power;
 			}
+			*(crnt_led->ocr_port) = crnt_led->actual_pwm;
 		}
+		
 	}
+	TCNT1 = 0;
 }

@@ -15,8 +15,8 @@
 #define MAX_FIXED_BYES_IN_REQUEST 9
 #define MAX_REGISTERS 64
 
- #define DEFAULT_MODBUS_ADDRESS 98
- #define DEFAULT_BAUDE_RATE 115200
+ #define DEFAULT_MODBUS_ADDRESS 1
+ #define DEFAULT_BAUDE_RATE 57600
 
 
 //Transmision buffer size
@@ -81,7 +81,7 @@ private:
 
 private:
 
-	Pin *pin;
+	Out_pin *pin;
 	
 	long last_byte_arrival_t = 0;
 };
@@ -115,8 +115,34 @@ public:
 private:
 };
 
+class Modbus_read : public Modbus_base
+{
+	public:
+	void populate_frame_with_regs(uint8_t no_of_registers);
+
+	bool respond_flag = false;
+
+	volatile unsigned long last_repond_t = 0;
+
+	protected:
+	uint16_t starting_reg;
+	uint16_t max_reg;
+};
+
+class Modbus_read_reg : public Modbus_read
+{
+	public:
+	Modbus_read_reg();
+
+	//Odczytuje rejestry modbus
+	void read_holding_regs();
+	private:
+};
+
 extern Frame *frame;
 extern  Modbus_write_reg *write_reg;
+extern Modbus_read_reg *read_reg;
+
 
 
 #endif //MODBUS_SLAVE_H_

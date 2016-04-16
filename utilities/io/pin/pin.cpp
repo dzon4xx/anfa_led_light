@@ -7,67 +7,14 @@
 
  #include <avr/io.h>
 #include "pin.h"
- Pin::Pin(uint8_t port_letter, uint8_t pin_num)
- {
-	pin_mask = (1<<pin_num);
-	this->port_letter = port_letter; 
+#include "../../../settings.h"
 
-	#ifdef PORTA
-	if (port_letter == 'A')
-	{
-		out_port = &PORTA;
-		in_port  = &PINA;
-		dir_port = &DDRA;
-	}
-	#endif
+#define NUM_OF_PORTS 3
+uint8_t port_letters[]	=	{'b', 'c', 'd'};
+volatile uint8_t *out_ports[]	= {&PORTB, &PORTC, &PORTD};
+volatile uint8_t *in_ports[]	= {&PINB, &PINC, &PIND};
+volatile uint8_t *dir_ports[]	= {&DDRB, &DDRC, &DDRD};
 
-
-	#ifdef PORTB
-	if (port_letter == 'B')
-	{
-		out_port = &PORTB;
-		in_port  = &PINB;
-		dir_port = &DDRB;
-	}
-	#endif
-
-	#ifdef PORTC
-	if (port_letter == 'C')
-	{
-		out_port = &PORTC;
-		in_port  = &PINC;
-		dir_port = &DDRC;
-	}
-	#endif
-
-	#ifdef PORTD
-	if (port_letter == 'D')
-	{
-		out_port = &PORTD;
-		in_port  = &PIND;
-		dir_port = &DDRD;
-	}
-	#endif
-
-	#ifdef PORTE
-	if (port_letter == 'E')
-	{
-		out_port = &PORTE;
-		in_port  = &PINE;
-		dir_port = &DDRE;
-	}
-	#endif
-
-	#ifdef PORTF
-	if (port_letter == 'F')
-	{
-		out_port = &PORTF;
-		in_port  = &PINF;
-		dir_port = &DDRF;
-	}
-	#endif
-
- }
 
 uint8_t Pin::get_port_letter()
 {
@@ -79,42 +26,50 @@ uint8_t Pin::get_pin_mask()
 	return pin_mask;
 }
 
-volatile uint8_t* Pin::get_dir_port()
-{
-	return this->dir_port;
-}
 
-volatile uint8_t* Pin::get_in_port()
-{
-	return this->in_port;
-}
+ Out_pin::Out_pin(uint8_t port_letter, uint8_t pin_num)
+ {
+	pin_mask = (1<<pin_num);
+	this->port_letter = port_letter;
+	for(uint8_t i=0; i<NUM_OF_PORTS; i++)
+	{
+		if (port_letter == port_letters[i])
+		{
+			out_port = out_ports[i];
+			*dir_ports[i] |= pin_mask;
+			break;
+		}
+	}
+ }
 
-volatile uint8_t* Pin::get_out_port()
-{
-	return this->out_port;
-}
-
-void Pin::set_input()
-{
-	*(dir_port) &= ~pin_mask;
-}
-
-void Pin::set_output()
-{
-	*(dir_port) |= pin_mask;
-}
-
-void Pin::high()
+void Out_pin::high()
 {
 	*(out_port) |= pin_mask;
 }
 
-void Pin::low()
+void Out_pin::low()
 {
 	*(out_port) &= ~pin_mask;
 }
 
-bool Pin::read()
+ 
+In_pin::In_pin(uint8_t port_letter, uint8_t pin_num, bool pull_up)
 {
-	return	*(in_port) & pin_mask;
+	this->pin_mask = (1<<pin_num);
+	this->port_letter = port_letter;
+	
+	for (uint8_t i=0; i<NUM_OF_PORTS; i++)
+	{
+		if (port_letter == port_letters[i])
+		{
+			this->in_port	= in_ports[i];
+			*dir_ports[i]   &= ~pin_mask;
+			if (pull_up)
+			{
+				*out_ports[i] |= pin_mask;
+			}
+		}
+		break;
+	}
 }
+ 

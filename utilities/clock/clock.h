@@ -27,6 +27,6 @@ class Clock
 };
 
 extern bool respond;
-extern Clock clock;
+extern Clock *clock;
 
 #endif

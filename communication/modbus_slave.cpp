@@ -11,66 +11,69 @@
 #include "../utilities/io/pin/pin.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/delay.h>
 
 
- //Read  registers function 3
- #define FUN_READ_REGS 3
- #define READ_REGS_REQUEST_BYTES_NUM 8
+//Read  registers function 3
+#define FUN_READ_REGS 3
+#define READ_REGS_REQUEST_BYTES_NUM 8
 
- //Read input registers function 4
- #define FUN_READ_COILS 4
- #define READ_COILS_REQUEST_BYTES_NUM 8
+//Read input registers function 4
+#define FUN_READ_COILS 4
+#define READ_COILS_REQUEST_BYTES_NUM 8
 
- //Write coils function 15
- #define FUN_WRITE_COILS 15
- #define WRITE_COILS_REQUEST_BYTES_NUM 9
+//Write coils function 15
+#define FUN_WRITE_COILS 15
+#define WRITE_COILS_REQUEST_BYTES_NUM 9
 
- //Write  registers Function 16
- #define FUN_WRITE_REGS 16
- #define WRITE_REGS_REQUEST_BYTES_NUM 9
+//Write  registers Function 16
+#define FUN_WRITE_REGS 16
+#define WRITE_REGS_REQUEST_BYTES_NUM 9
 
- //Frame request/response
- #define POS_SLAVE_ADDRESS 0
- #define POS_FUNCTION 1
- //Frame request/response
+//Frame request/response
+#define POS_SLAVE_ADDRESS 0
+#define POS_FUNCTION 1
+//Frame request/response
 
- //Frame request
- #define POS_REQUEST_STARTING_ADDR_HI 2
- #define POS_REQUEST_STARTING_ADDR_LO 3
- #define POS_REQUEST_QUANTITY_OF_REG_HI 4
- #define POS_REQUEST_QUANTITY_OF_REG_LO 5
- //Frame request function 15 anf 16
- #define POS_REQUEST_BYTE_COUNT 6
- //Frame request
+//Frame request
+#define POS_REQUEST_STARTING_ADDR_HI 2
+#define POS_REQUEST_STARTING_ADDR_LO 3
+#define POS_REQUEST_QUANTITY_OF_REG_HI 4
+#define POS_REQUEST_QUANTITY_OF_REG_LO 5
+//Frame request function 15 anf 16
+#define POS_REQUEST_BYTE_COUNT 6
+//Frame request
 
- //Frame response
- //Frame request function 3 and 4
- #define POS_RESPONSE_BYTE_COUNT 2
- //
- #define POS_RESPONSE_ERROR_CHECK_LO 6
- #define POS_RESPONSE_ERROR_CHECK_HI 7
- //Frame response
+//Frame response
+//Frame request function 3 and 4
+#define POS_RESPONSE_BYTE_COUNT 2
+//
+#define POS_RESPONSE_ERROR_CHECK_LO 6
+#define POS_RESPONSE_ERROR_CHECK_HI 7
+//Frame response
 
- //Frame exception
- #define POS_EXCEPTION 2
- //Frame exception
+//Frame exception
+#define POS_EXCEPTION 2
+//Frame exception
 
- //Exceptions
- #define EXCEPTION_ILLEGAL_FUNCTION 1
- #define EXCEPTION_ILLEGAL_DATA_ADDR 2
- #define EXCEPTION_ILLEGAL_DATA_VAL 3
- #define EXCEPTION_SLAVE_DEVICE_BUSY 6
- #define EXCEPTION_CRC_ERROR 8
- //Exceptions
+//Exceptions
+#define EXCEPTION_ILLEGAL_FUNCTION 1
+#define EXCEPTION_ILLEGAL_DATA_ADDR 2
+#define EXCEPTION_ILLEGAL_DATA_VAL 3
+#define EXCEPTION_SLAVE_DEVICE_BUSY 6
+#define EXCEPTION_CRC_ERROR 8
+//Exceptions
 
- //Link layers settings settings
- #define MS_BETWEEN_FRAMES 5
+//Link layers settings settings
+#define MS_BETWEEN_FRAMES 5
+#define BAUD_PRESCALE (((( F_CPU / 16) + ( DEFAULT_BAUDE_RATE / 2) ) / ( DEFAULT_BAUDE_RATE )) - 1)
+
  //Link layers settings settings
         
       
  Frame::Frame()
 {
-	 this->pin = new Pin('B', 5);
+	 this->pin = new Out_pin('c', 2);
  	 this->listen_mode();
  	 this->calculate_time_outs(DEFAULT_BAUDE_RATE);
  	 this->set_UART();
@@ -78,14 +81,8 @@
 
 uint8_t Frame::read_byte()
 {
-	#ifdef ATMEGA32U4
-	 uint8_t in_byte = UDR1;
-	#endif
-
-	#ifdef ATMEGA328
 	 uint8_t in_byte = UDR0;
-	#endif
-	 unsigned long byte_arrival_t = clock.get_ms();		// Czas nadejscia bajtu wyrazony w ilosci zliczen timera 1
+	 uint32_t byte_arrival_t = clock->get_ms();		// Czas nadejscia bajtu wyrazony w ilosci zliczen timera 1
 	 if (byte_arrival_t-this->last_byte_arrival_t>MS_BETWEEN_FRAMES)
 	 {
 		 this->is_new = true;
@@ -126,17 +123,12 @@ void Frame::send(uint8_t size)
 	  this->send_mode();
 	  for (uint8_t i = 0; i < size; i++)
 	  {
-#ifdef ATMEGA_32U4
-		  UDR1 = this->data[i];
-#endif
 
-#ifdef ATMEGA_328
 		UDR0 = this->data[i];
-#endif
 
 		for (unsigned int i=0; i<this->T1_5; i++)
 		{
-			  	//_delay_us(1);
+			  	_delay_us(1);
 		}	  	
 	  }
 	  this->listen_mode();
@@ -157,25 +149,11 @@ void Frame::exception_response(uint8_t function, uint8_t exception)
 
 void Frame::set_UART()
 {
-#ifdef ATMEGA_32U4
-	#define BAUD_PRESCALE (((( 16000000 / 16) + ( DEFAULT_BAUDE_RATE / 2) ) / ( DEFAULT_BAUDE_RATE )) - 1)
-	 *(this->RS485_dir_register) |= (1<<RS485_control_pin);
-	 UCSR1B = (1 << RXEN1) | (1 << TXEN1); // Turn on the transmission and reception circuitry
-	 UCSR1C = (1 << UMSEL11) | (1 << UCSZ10) | (1 << UCSZ11); // Use 8- bit character sizes
-	 UBRR1H = (BAUD_PRESCALE>>8);
-	 UBRR1L = (BAUD_PRESCALE);
-	 UCSR1B |= (1 << RXCIE1);	//Zezwolenie na przerwania od UART
-#endif
-
-#ifdef ATMEGA_328
-
-	 	UCSR0B = (1 << RXEN0) | (1 << TXEN0); // Turn on the transmission and reception circuitry
-	 	UCSR0C = (1 << UMSEL01) | (1 << UCSZ00) | (1 << UCSZ01); // Use 8- bit character sizes
-	 	UBRR0H = (BAUD_PRESCALE>>8);
-	 	UBRR0L = (BAUD_PRESCALE);
-	 	UCSR0B |= (1 << RXCIE0);	//Zezwolenie na przerwania od UART
-
-#endif
+	UCSR0B = (1 << RXEN0) | (1 << TXEN0); // Turn on the transmission and reception circuitry
+	UCSR0C = (1 << UMSEL01) | (1 << UCSZ00) | (1 << UCSZ01); // Use 8- bit character sizes
+	UBRR0H = (BAUD_PRESCALE>>8);
+	UBRR0L = (BAUD_PRESCALE);
+	UCSR0B |= (1 << RXCIE0);	//Zezwolenie na przerwania od UART
 }
 
 void Frame::listen_mode()
@@ -226,11 +204,10 @@ uint16_t Frame::calculate_CRC(uint8_t size)
 	return temp;	 
 }
 
- Frame *frame;
 
 
 
- void Modbus_write::populate_regs_with_frame(uint8_t data[], uint8_t no_of_registers)
+void Modbus_write::populate_regs_with_frame(uint8_t data[], uint8_t no_of_registers)
  {
 	 uint8_t frame_counter = 0;
 	 for(uint8_t reg_num=0; reg_num<no_of_registers; reg_num++)
@@ -244,53 +221,102 @@ uint16_t Frame::calculate_CRC(uint8_t size)
 
 
 
- Modbus_write_reg::Modbus_write_reg(){}
+Modbus_write_reg::Modbus_write_reg(){}
 
- void Modbus_write_reg::write_holding_regs()
- {
-	 uint8_t *data = frame->data;
-	 uint8_t num_of_bytes = data[POS_REQUEST_BYTE_COUNT];
-	 unsigned int error_check_lo_index = (POS_REQUEST_BYTE_COUNT+1)+num_of_bytes;
-	 unsigned int error_check_hi_index = error_check_lo_index+1;
-	 unsigned int crc = ((data[error_check_lo_index] << 8) | data[error_check_hi_index]); // combine the crc Low & High bytes
-	 if ( frame->calculate_CRC(error_check_lo_index) == crc) // if the calculated crc matches the recieved crc continue
-	 {
-		 unsigned int starting_address = ((data[POS_REQUEST_STARTING_ADDR_HI] << 8) | data[POS_REQUEST_STARTING_ADDR_LO]); // combine the starting address bytes
-		 unsigned int no_of_registers = ((data[POS_REQUEST_QUANTITY_OF_REG_HI] << 8) | data[POS_REQUEST_QUANTITY_OF_REG_LO]); // combine the number of register bytes
-		 unsigned int max_data = starting_address + no_of_registers;
+void Modbus_write_reg::write_holding_regs()
+{
+	uint8_t *data = frame->data;
+	uint8_t num_of_bytes = data[POS_REQUEST_BYTE_COUNT];
+	unsigned int error_check_lo_index = (POS_REQUEST_BYTE_COUNT+1)+num_of_bytes;
+	unsigned int error_check_hi_index = error_check_lo_index+1;
+	unsigned int crc = ((data[error_check_lo_index] << 8) | data[error_check_hi_index]); // combine the crc Low & High bytes
+	if ( frame->calculate_CRC(error_check_lo_index) == crc) // if the calculated crc matches the recieved crc continue
+	{
+		unsigned int starting_address = ((data[POS_REQUEST_STARTING_ADDR_HI] << 8) | data[POS_REQUEST_STARTING_ADDR_LO]); // combine the starting address bytes
+		unsigned int no_of_registers = ((data[POS_REQUEST_QUANTITY_OF_REG_HI] << 8) | data[POS_REQUEST_QUANTITY_OF_REG_LO]); // combine the number of register bytes
+		unsigned int max_data = starting_address + no_of_registers;
 
-		 if (starting_address < no_of_registers) // check exception 2 ILLEGAL DATA ADDRESS
-		 {
-			 if (max_data <= MAX_REGISTERS) // check exception 3 ILLEGAL DATA VALUE
-			 {
+		if (starting_address < no_of_registers) // check exception 2 ILLEGAL DATA ADDRESS
+		{
+			if (max_data <= MAX_REGISTERS) // check exception 3 ILLEGAL DATA VALUE
+			{
 
-				 this->populate_regs_with_frame(data+7, no_of_registers);	//uzywaj ramki od 7 pozycji
+				this->populate_regs_with_frame(data+7, no_of_registers);	//uzywaj ramki od 7 pozycji
 
-				 unsigned int crc16 = frame->calculate_CRC(6); 	// only the first 6 bytes are used for CRC calculation
-				 data[6] = crc16 >> 8; // split crc into 2 bytes
-				 data[7] = crc16 & 0xFF;
+				unsigned int crc16 = frame->calculate_CRC(6); 	// only the first 6 bytes are used for CRC calculation
+				data[6] = crc16 >> 8; // split crc into 2 bytes
+				data[7] = crc16 & 0xFF;
 
-				 frame->send(8); // a function 16 response is an echo of the first 6 bytes from the request + 2 crc bytes
+				frame->send(8); // a function 16 response is an echo of the first 6 bytes from the request + 2 crc bytes
 
-				 this->new_packet_pending = true;
-			 }
-			 else{frame->exception_response(FUN_WRITE_REGS, EXCEPTION_ILLEGAL_DATA_VAL);} // exception 3 ILLEGAL DATA VALUE
-		 }
-		 else {frame->exception_response(FUN_WRITE_REGS, EXCEPTION_ILLEGAL_DATA_ADDR);} // exception 2 ILLEGAL DATA ADDRESS
-	 }
-	 else{frame->exception_response(FUN_WRITE_REGS, EXCEPTION_CRC_ERROR);} // exception 1 ILLEGAL FUNCTION
- }
+				this->new_packet_pending = true;
+			}
+			else{frame->exception_response(FUN_WRITE_REGS, EXCEPTION_ILLEGAL_DATA_VAL);} // exception 3 ILLEGAL DATA VALUE
+		}
+		else {frame->exception_response(FUN_WRITE_REGS, EXCEPTION_ILLEGAL_DATA_ADDR);} // exception 2 ILLEGAL DATA ADDRESS
+	}
+	else{frame->exception_response(FUN_WRITE_REGS, EXCEPTION_CRC_ERROR);} // exception 1 ILLEGAL FUNCTION
+}
 
- Modbus_write_reg *write_reg;
 
- #ifdef ATMEGA32U4
- ISR(USART1_RX_vect)
- #endif
 
- #if ATMEGA328
- ISR(USART0_RX_vect)
-#endif
- {
+void Modbus_read::populate_frame_with_regs(uint8_t no_of_registers)
+{
+	uint8_t *data = frame->data;
+	uint8_t index = 3; // PDU starts at the 4th byte
+	unsigned int temp;
+	for (uint8_t reg_num = starting_reg; reg_num < max_reg; reg_num++)
+	{
+		temp = this->regs[reg_num];
+		data[index] = temp >> 8; // split the register into 2 bytes
+		index++;
+		data[index] = temp & 0xFF;
+		index++;
+	}
+}
+
+
+
+Modbus_read_reg::Modbus_read_reg(){}
+
+void Modbus_read_reg::read_holding_regs()
+{
+	uint8_t *data = frame->data;
+	unsigned int crc = ((data[POS_RESPONSE_ERROR_CHECK_LO] << 8) | data[POS_RESPONSE_ERROR_CHECK_HI]); // combine the crc Low & High bytes
+	if (frame->calculate_CRC(POS_RESPONSE_ERROR_CHECK_LO) == crc) // if the calculated crc matches the recieved crc continue
+	{
+		starting_reg = ((data[POS_REQUEST_STARTING_ADDR_HI] << 8) | data[POS_REQUEST_STARTING_ADDR_LO]); // combine the starting address bytes
+		unsigned int no_of_registers = ((data[POS_REQUEST_QUANTITY_OF_REG_HI] << 8) | data[POS_REQUEST_QUANTITY_OF_REG_LO]); // combine the number of register bytes
+		max_reg = starting_reg + no_of_registers;
+
+		if (starting_reg < no_of_registers) // check exception 2 ILLEGAL DATA ADDRESS
+		{
+			if (max_reg <= MAX_REGISTERS) // check exception 3 ILLEGAL DATA VALUE
+			{
+				data[POS_RESPONSE_BYTE_COUNT] = no_of_registers*2;
+				this->populate_frame_with_regs(no_of_registers);
+				  
+				uint8_t response_frame_size = 5 + no_of_registers*2;	// 5 - slave addr, fun, byte_count, crc_lo, crc_hi
+				uint16_t crc16 = frame->calculate_CRC(response_frame_size - 2);	//Wylicz sume kontrolna
+				  
+				data[response_frame_size - 2] = crc16 >> 8; // split crc into 2 bytes
+				data[response_frame_size - 1] = crc16 & 0xFF;
+
+				frame->send(response_frame_size);
+			}
+			else{frame->exception_response(FUN_READ_REGS, EXCEPTION_ILLEGAL_DATA_VAL);} // exception 3 ILLEGAL DATA VALUE
+		}
+		else {frame->exception_response(FUN_READ_REGS, EXCEPTION_ILLEGAL_DATA_ADDR);} // exception 2 ILLEGAL DATA ADDRESS
+	}
+	else{frame->exception_response(FUN_READ_REGS, EXCEPTION_CRC_ERROR);} // exception 1 ILLEGAL FUNCTION
+}
+
+Frame *frame;
+Modbus_write_reg *write_reg;
+Modbus_read_reg *read_reg;
+
+ ISR(USART_RX_vect)
+{
 	 uint8_t in_byte = frame->read_byte();
 
 	 if(frame->is_new)
@@ -312,6 +338,10 @@ uint16_t Frame::calculate_CRC(uint8_t size)
 				 if(function_num == FUN_WRITE_REGS)
 				 {
 				 	 write_reg->write_holding_regs();
+				 }
+				 else if(function_num == FUN_READ_REGS)
+				 {
+				 	 read_reg->read_holding_regs();
 				 }
 				 else
 				 {
