@@ -23,6 +23,50 @@ Memory mem;
 #define MAX_DIM_PERIOD 65355
 
 #define NUM_OF_DEBUG_VAR 3
+void debug();
+
+int main(void)
+{
+	leds[0] = new led(1);
+	leds[1] = new led(2);
+	leds[2] = new led(3);
+	led::init_pwms();	
+	
+	frame = new Frame;
+	write_reg = new Modbus_write_reg;
+	read_reg  = new Modbus_read_reg;
+	
+	clock = new Clock;
+	clock->start();
+    /* Replace with your application code */
+    while (1) 
+    {
+		if (write_reg->new_packet_pending)
+		{
+				uint8_t reg_counter = 0;
+				for(uint8_t led_num=0; led_num<NUM_OF_CHANNELS; led_num++)
+				{
+					uint8_t power =  write_reg->regs[reg_counter];
+					uint8_t pwm;
+					if (power == 0)
+					{
+						pwm = 0;
+					}
+					else{
+						pwm = constrain(power, MIN_POWER, MAX_POWER)*1.83 +72;
+					}
+					//uint8_t desired_pwm = map(desired_power, MIN_POWER, MAX_POWER, MIN_PWM, MAX_PWM);
+					leds[led_num]->set_desired_pwm(pwm);
+					reg_counter++;
+					//leds[led_num]->set_dim_time(write_reg->regs[reg_counter]);
+					//reg_counter++;
+				}
+			write_reg->new_packet_pending = false;
+		}
+		//debug();
+    }
+}
+
 void debug()
 {
 	for (uint8_t i=0; i<NUM_OF_CHANNELS; i++)
@@ -34,40 +78,3 @@ void debug()
 		
 	}
 }
-
-int main(void)
-{
-	
-	leds[0] = new led(1);
-	leds[1] = new led(2);
-	leds[2] = new led(3);
-	
-	frame = new Frame;
-	write_reg = new Modbus_write_reg;
-	read_reg  = new Modbus_read_reg;
-	
-	led::init_pwms();
-	clock = new Clock;
-	clock->start();
-    /* Replace with your application code */
-    while (1) 
-    {
-		if (write_reg->new_packet_pending)
-		{
-				uint8_t reg_counter = 0;
-				for(uint8_t led_num=0; led_num<NUM_OF_CHANNELS; led_num++)
-				{
-					uint8_t desired_pwm = constrain(write_reg->regs[reg_counter], MIN_POWER, MAX_POWER)*2.55;
-					//uint8_t desired_pwm = map(desired_power, MIN_POWER, MAX_POWER, MIN_PWM, MAX_PWM);
-					leds[led_num]->set_desired_pwm(desired_pwm);
-					reg_counter++;
-					uint16_t dim_time = write_reg->regs[reg_counter];
-					leds[led_num]->set_dim_time(dim_time);
-					reg_counter++;
-				}
-			write_reg->new_packet_pending = false;
-		}
-		debug();
-    }
-}
-

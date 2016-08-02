@@ -20,7 +20,7 @@ public:
 	led(uint8_t channel);
 	
 	//Ustaw nastawe mocy
-	void set_desired_pwm(uint8_t desired_pwm);
+	void set_desired_pwm(uint8_t desired_power);
 
 	//Ustaw czas rozjasniania i przyciemniania
 	void set_dim_time(uint16_t desired_dim_period);

@@ -62,7 +62,7 @@ ISR (TIMER1_COMPA_vect)
 			{
 				crnt_led->actual_pwm = crnt_led->desired_pwm;
 			}			
-			else if (miliseconds_passed%crnt_led->incr_time==0)
+			else if (miliseconds_passed%crnt_led->incr_time==0) //linearyzacja mocy ze wzgledu na incr_time
 			{
 					crnt_led->actual_pwm += crnt_led->incr_power;
 			}

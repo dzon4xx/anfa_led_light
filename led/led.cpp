@@ -35,6 +35,7 @@ const uint8_t gamma_correction[] PROGMEM = {
 
  led::led(uint8_t channel)
 {
+
 	if (channel==1)
 	{
 		this->ocr_port = &OCR0A;
@@ -49,17 +50,17 @@ const uint8_t gamma_correction[] PROGMEM = {
 	}
 }
 
-void led::set_desired_pwm(uint8_t desired_pwm)
+void led::set_desired_pwm(uint8_t desired_power)
 {
 
-	this->desired_pwm = pgm_read_byte(gamma_correction+desired_pwm) ;
+	this->desired_pwm = pgm_read_byte(gamma_correction+desired_power) ;
 
-	if (desired_pwm > this->actual_pwm)
+	if (this->desired_pwm > this->actual_pwm)
 	{
 		this->incr_power = 1;
 	}
 
-	else if (desired_pwm<actual_pwm)
+	else if (this->desired_pwm<this->actual_pwm)
 	{
 		this->incr_power = -1;
 	}
@@ -72,7 +73,7 @@ void led::set_desired_pwm(uint8_t desired_pwm)
 
 void led::set_dim_time(uint16_t desired_dim_period)
 {	
-	this->incr_time = desired_dim_period*S_TO_MS/MAX_PWM;	//Czas co jaki ma siê inkrementowac 1 poziom jasnosci
+	this->incr_time = desired_dim_period*3.9215;	//Czas co jaki ma siê inkrementowac 1 poziom jasnosci
 }
 
 void led::init_pwms()
@@ -89,7 +90,9 @@ void led::init_pwms()
 	TCCR2A |= ((1<<COM2B0) | (1<<COM2B1)); // kanal 3 tryb pwm odworony. nie odwrocony bez com0a0
 
 	DDRD |= ((1<<PIND3) | (1<<PIND5) | (1<<PIND6));	//ustawienie pinow jako wyjscia
-
+	OCR0A = 0;
+	OCR0B = 0;
+	OCR2B = 0;
 }
 
 

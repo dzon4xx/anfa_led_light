@@ -9,18 +9,19 @@
  */
 
 
- #include "../utilities/io/pin/pin.h"
+#include "../utilities/io/pin/pin.h"
 #include <stdint.h>
+#include <avr/io.h>
 
-#define MAX_FIXED_BYES_IN_REQUEST 9
+#define MAX_FIXED_BYTES_IN_REQUEST 9
 #define MAX_REGISTERS 64
 
- #define DEFAULT_MODBUS_ADDRESS 1
- #define DEFAULT_BAUDE_RATE 57600
+#define DEFAULT_MODBUS_ADDRESS 3	// Adres modbus urzadzenia
 
+#define WRITE_REGS_RESPONSE_SIZE 8
 
 //Transmision buffer size
-#define BUFFER_SIZE 2*MAX_REGISTERS+MAX_FIXED_BYES_IN_REQUEST//maks 256 bajtow do komunikacji
+#define BUFFER_SIZE 2*MAX_REGISTERS+MAX_FIXED_BYTES_IN_REQUEST//maks 256 bajtow do komunikacji
 
 class Frame
 {
@@ -34,8 +35,9 @@ public:
 	//Sprawdza dlugosc przychodzacej ramki
 	int16_t check_length(uint8_t in_byte);
 
-	//Wyslij ramke poprzez modbus
-	void send(unsigned char bufferSize);
+	void listen_mode();
+	
+	void send_mode(uint8_t response_frame_size);
 
 	// Odpowiedz bledu.
 	void exception_response(uint8_t function, uint8_t exception);
@@ -43,47 +45,51 @@ public:
 	//Wyliczanie sumy kontrolnej
 	uint16_t calculate_CRC(uint8_t size);
 
+	void set_address(uint8_t address);
+
 public:
 
 	//Adres sluzacy do komunikacji modbus
 	uint8_t address = DEFAULT_MODBUS_ADDRESS;
 
-	//Predkosc transmisji
-	unsigned long baude_rate = DEFAULT_BAUDE_RATE;
 
 	//Licznik przychodzacych bajtow
-	uint8_t in_bytes_counter = 0;
+	volatile uint8_t in_bytes_counter = 0;
 
 	//Flaga mowiaca czy przyszla nowa ramka danych.
-	bool is_new = false;
+	volatile bool is_new = false;
 
 	//Dlugosc przychodzacej ramki
-	uint16_t length = -1;
+	volatile uint16_t length = 65535;
 
 	//Bufor sluzacy do odczytywania i wysylania danych przez UART
 	uint8_t data[BUFFER_SIZE] = {0};
+				
+	volatile uint8_t send_data_pointer = 0;
+	
+	volatile uint8_t send_data_size = 0;
+
+	volatile uint8_t *uart_port = &UDR0;
+
 
 private:
 
 	//Konfiguracja komunikacji szeregowej
-	void set_UART();
-
-	void listen_mode();
-
-	void send_mode();
-
+	void init_UART();
+	
 	//Wylicz czasy opoznien do T1_5 oraz T3_5
 	void calculate_time_outs(uint32_t baude_rate);
-
-	unsigned int T1_5 = 750; // inter character time out
-
-	unsigned int T3_5 = 1750; // frame delay
 
 private:
 
 	Out_pin *pin;
-	
+				
 	long last_byte_arrival_t = 0;
+
+	uint8_t T3_5_ms = 1; // frame delay in ms
+
+	unsigned int T3_5_us = 1000; // frame delay in us
+	
 };
 
 class Modbus_base
@@ -139,10 +145,12 @@ class Modbus_read_reg : public Modbus_read
 	private:
 };
 
-extern Frame *frame;
-extern  Modbus_write_reg *write_reg;
-extern Modbus_read_reg *read_reg;
 
+extern Frame *frame;
+
+extern Modbus_write_reg *write_reg;
+
+extern Modbus_read_reg *read_reg;
 
 
 #endif //MODBUS_SLAVE_H_
